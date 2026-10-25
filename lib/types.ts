@@ -187,6 +187,31 @@ export interface FindingVerification {
   created_at: string;
 }
 
+export interface GitHubSignal {
+  key: string;
+  label: string;
+  detected: boolean;
+  sourceUrl: string | null;
+  detail: string;
+  category: 'policy' | 'code-review' | 'dependencies' | 'ci-cd' | 'licensing' | 'documentation';
+  notChecked: boolean;
+}
+
+export interface GitHubInspectionResult {
+  repository: {
+    owner: string;
+    name: string;
+    fullName: string;
+    description: string | null;
+    defaultBranch: string;
+    url: string;
+    isPrivate: boolean;
+  };
+  signals: GitHubSignal[];
+  inspectedAt: string;
+  rateLimitRemaining: number | null;
+}
+
 export interface DashboardSummary {
   totalControls: number;
   totalEvidence: number;
