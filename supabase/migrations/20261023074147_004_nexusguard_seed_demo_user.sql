@@ -24,7 +24,9 @@ BEGIN
       updated_at,
       confirmation_token,
       email_change_token_new,
-      email_change
+      email_change,
+      raw_app_meta_data,
+      raw_user_meta_data
     ) VALUES (
       '00000000-0000-0000-0000-000000000000',
       gen_random_uuid(),
@@ -37,7 +39,9 @@ BEGIN
       now(),
       '',
       '',
-      ''
+      '',
+      '{}'::jsonb,
+      '{}'::jsonb
     )
     RETURNING id INTO demo_user_id;
   END IF;
