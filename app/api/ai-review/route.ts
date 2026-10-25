@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { isBackboardConfigured, callBackboard, buildReviewPrompt, parseReviewContent, BackboardError } from '@/lib/backboard';
+import { checkLimit, recordUsage } from '@/lib/usage';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
@@ -99,6 +100,21 @@ export async function POST(req: NextRequest) {
       .eq('finding_id', findingId);
     if (tasks) remediationTasks = tasks;
 
+    // Check usage limits before performing the AI review
+    const limitCheck = await checkLimit(supabase, orgId, 'ai_review');
+    if (!limitCheck.allowed) {
+      return NextResponse.json({
+        error: limitCheck.message,
+        code: 'usage_limit_exceeded',
+        limitType: 'ai_review',
+        usage: {
+          used: limitCheck.usage.aiReviews,
+          limit: limitCheck.usage.aiReviewsLimit,
+          plan: limitCheck.usage.plan.name,
+        },
+      }, { status: 429, headers: corsHeaders });
+    }
+
     // Check if Backboard is configured
     if (!isBackboardConfigured()) {
       return NextResponse.json({
@@ -188,6 +204,13 @@ export async function POST(req: NextRequest) {
         model: backboardResult.model,
       },
     });
+
+    // Record successful usage
+    try {
+      await recordUsage(supabase, orgId, 'ai_review');
+    } catch {
+      // Usage recording failure should not block the successful review
+    }
 
     return NextResponse.json({
       review: parsed,

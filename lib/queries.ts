@@ -105,6 +105,34 @@ export async function fetchAIReviewsForFinding(orgId: string, findingId: string)
   return (data as AIAnalysisRun[]) ?? [];
 }
 
+export interface MonthlyUsage {
+  aiReviews: number;
+  githubInspections: number;
+}
+
+export async function fetchMonthlyUsage(orgId: string): Promise<MonthlyUsage> {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+  const { data, error } = await supabase
+    .from('usage_events')
+    .select('event_type, count')
+    .eq('organization_id', orgId)
+    .gte('created_at', start.toISOString())
+    .lte('created_at', end.toISOString());
+
+  if (error || !data) return { aiReviews: 0, githubInspections: 0 };
+
+  let aiReviews = 0;
+  let githubInspections = 0;
+  for (const row of data as { event_type: string; count: number }[]) {
+    if (row.event_type === 'ai_review') aiReviews += row.count;
+    if (row.event_type === 'github_inspection') githubInspections += row.count;
+  }
+  return { aiReviews, githubInspections };
+}
+
 export async function fetchAuditEvents(orgId: string, limit = 50): Promise<AuditEvent[]> {
   const { data, error } = await supabase
     .from('audit_events')

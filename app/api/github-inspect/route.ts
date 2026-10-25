@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { parseGitHubUrl, inspectRepository, GitHubInspectionError } from '@/lib/github';
+import { checkLimit, recordUsage } from '@/lib/usage';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
@@ -46,6 +47,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No organization found for this user.' }, { status: 403, headers: corsHeaders });
     }
 
+    const orgId = membership.organization_id;
+
     const body = await req.json();
     const repoUrl = body?.repoUrl;
     if (!repoUrl || typeof repoUrl !== 'string') {
@@ -60,6 +63,21 @@ export async function POST(req: NextRequest) {
       }, { status: 400, headers: corsHeaders });
     }
 
+    // Check usage limits before performing the GitHub inspection
+    const limitCheck = await checkLimit(supabase, orgId, 'github_inspection');
+    if (!limitCheck.allowed) {
+      return NextResponse.json({
+        error: limitCheck.message,
+        code: 'usage_limit_exceeded',
+        limitType: 'github_inspection',
+        usage: {
+          used: limitCheck.usage.githubInspections,
+          limit: limitCheck.usage.githubInspectionsLimit,
+          plan: limitCheck.usage.plan.name,
+        },
+      }, { status: 429, headers: corsHeaders });
+    }
+
     let result;
     try {
       result = await inspectRepository(parsed.owner, parsed.repo);
@@ -70,6 +88,13 @@ export async function POST(req: NextRequest) {
         error: ghErr.message,
         code: ghErr.type,
       }, { status: statusCode, headers: corsHeaders });
+    }
+
+    // Record successful usage
+    try {
+      await recordUsage(supabase, orgId, 'github_inspection');
+    } catch {
+      // Usage recording failure should not block the successful inspection
     }
 
     return NextResponse.json(result, { status: 200, headers: corsHeaders });
