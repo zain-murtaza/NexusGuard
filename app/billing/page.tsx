@@ -5,13 +5,12 @@ import { CreditCard, Check, Zap, Building2, Sparkles, Search, AlertCircle, Loade
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { PageHeader } from '@/components/page-header';
 import { DemoBanner } from '@/components/demo-banner';
 import { useAppData } from '@/hooks/use-app-data';
 import { LoadingState, ErrorState } from '@/components/state';
 import { fetchMonthlyUsage, MonthlyUsage } from '@/lib/queries';
-import { PLANS, PLAN_LIST, getPlanConfig } from '@/lib/plans';
+import { PLAN_LIST, getPlanConfig } from '@/lib/plans';
 
 const planIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   starter: CreditCard,
@@ -120,7 +119,12 @@ export default function BillingPage() {
                     {aiReviewsUsed} / {aiReviewsLimit}
                   </span>
                 </div>
-                <Progress value={aiReviewsPercent} className="h-2" />
+                <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all"
+                    style={{ width: `${aiReviewsPercent}%` }}
+                  />
+                </div>
                 {aiReviewsExceeded ? (
                   <div className="flex items-center gap-1.5 text-xs text-destructive">
                     <AlertCircle className="h-3 w-3" />
@@ -144,7 +148,12 @@ export default function BillingPage() {
                     {githubInspectionsUsed} / {githubInspectionsLimit}
                   </span>
                 </div>
-                <Progress value={githubInspectionsPercent} className="h-2" />
+                <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all"
+                    style={{ width: `${githubInspectionsPercent}%` }}
+                  />
+                </div>
                 {githubInspectionsExceeded ? (
                   <div className="flex items-center gap-1.5 text-xs text-destructive">
                     <AlertCircle className="h-3 w-3" />
